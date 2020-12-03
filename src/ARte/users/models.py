@@ -1,11 +1,13 @@
-from django.db import models
-from django.contrib.auth.models import User
-from django.db.models.signals import post_save, post_delete
-from django.dispatch import receiver
-from django.core.files.storage import default_storage
 import re
 
+from django.contrib.auth.models import User
+from django.core.files.storage :wqimport default_storage
+from django.db import models
+from django.db.models.signals import post_delete, post_save
+from django.dispatch import receiver
+
 from .choices import COUNTRY_CHOICES
+
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.DO_NOTHING)
@@ -40,30 +42,6 @@ class Marker(models.Model):
     def __str__(self):
         return self.source.name
 
-    @property
-    def artworks_count(self):
-        return Artwork.objects.filter(marker=self).count()
-
-    @property
-    def artworks_list(self):
-        return Artwork.objects.filter(marker=self)
-
-    @property
-    def exhibits_count(self):
-        from core.models import Exhibit
-        return Exhibit.objects.filter(artworks__marker=self).count()
-
-    @property
-    def exhibits_list(self):
-        from core.models import Exhibit
-        return Exhibit.objects.filter(artworks__marker=self)
-
-    @property
-    def in_use(self):
-        if self.artworks_count > 0 or self.exhibits_count > 0:
-            return True
-        return False
-
 
 class Object(models.Model):
     owner = models.ForeignKey(Profile, on_delete=models.DO_NOTHING)
@@ -77,31 +55,8 @@ class Object(models.Model):
 
     def __str__(self):
         return self.source.name
-
-    @property
-    def artworks_count(self):
-        return Artwork.objects.filter(augmented=self).count()
-
-    @property
-    def artworks_list(self):
-        return Artwork.objects.filter(augmented=self)
-
-    @property
-    def exhibits_count(self):
-        from core.models import Exhibit
-        return Exhibit.objects.filter(artworks__augmented=self).count()
-
-    @property
-    def exhibits_list(self):
-        from core.models import Exhibit
-        return Exhibit.objects.filter(artworks__augmented=self)
-
-    @property
-    def in_use(self):
-        if self.artworks_count > 0 or self.exhibits_count > 0:
-            return True
-
-        return False
+    
+   
     
     @property
     def xproportion(self):
@@ -201,19 +156,6 @@ class Artwork(models.Model):
     description = models.TextField(max_length=500, blank=True)
     created_at = models.DateTimeField(auto_now=True)
 
-    @property
-    def exhibits_count(self):
-        from core.models import Exhibit
-        return Exhibit.objects.filter(artworks__in=[self]).count()
-
-    @property
-    def exhibits_list(self):
-        from core.models import Exhibit
-        return list(Exhibit.objects.filter(artworks__in=[self]))
     
-    @property
-    def in_use(self):
-        if self.exhibits_count > 0:
-            return True
+  
 
-        return False

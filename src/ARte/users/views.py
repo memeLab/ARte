@@ -23,6 +23,9 @@ from .forms import SignupForm, RecoverPasswordCodeForm, RecoverPasswordForm, Upl
 from .models import Marker, Object, Artwork, Profile
 from core.models import Exhibit
 from core.helpers import *
+from .calculate_Object import calcObject 
+from .calculate_Artwork import CalcArtwork
+from .Calculate_Marker  import calcMarker 
 
 def signup(request):
 
@@ -311,6 +314,45 @@ def download_exhibit(request):
 @login_required
 def marker_upload(request):
     return upload_view(request, UploadMarkerForm, 'marker', 'marker-upload')
+def set_count(element):
+    if(type(element)==Marker):
+        calc_object=CalcObject(element)
+        return calc_object.exhibits_count()
+    else:
+        calcmarker=CalcArtwork(element)
+        return calcmarker.exhibits_count()
+def set_count_artwork(element):
+    calc_artwork=CalcArtwork(element)
+    return calc_artwork.exhibits_count()    
+def set_data(element,element_type):
+    if element_type == 'artwork':
+      data = {
+	    'id_marker' : element.marker.id,
+	    'id_object' : element.augmented.id,
+            'type': element_type,
+            'author': element.author.user.username,
+            'exhibits':set_count_artwork(element),
+            'created_at': element.created_at.strftime('%d %b, %Y'),
+            'marker': element.marker.source.url,
+            'augmented': element.augmented.source.url,
+            'augmented_size': element.augmented.source.size,
+            'title': element.title,
+            'description': element.description,}
+
+    else:
+        data = {
+            'id' : element.id,
+            'type': element_type,
+            'author': element.author,
+            'owner': element.owner.user.username,
+            'artworks': element.artworks_count,
+            'exhibits':set_count(element),
+            'source': element.source.url,
+            'size': element.source.size,
+            'uploaded_at': element.uploaded_at.strftime('%d %b, %Y'),
+        }
+    return data
+
 
 @cache_page(60 * 2)
 def element_get(request):
@@ -324,32 +366,7 @@ def element_get(request):
         element_type = 'artwork'
         element = get_object_or_404(Artwork, pk=request.GET['artwork_id'])
         
-    if element_type == 'artwork':
-        data = {
-	    'id_marker' : element.marker.id,
-	    'id_object' : element.augmented.id,
-            'type': element_type,
-            'author': element.author.user.username,
-            'exhibits': element.exhibits_count,
-            'created_at': element.created_at.strftime('%d %b, %Y'),
-            'marker': element.marker.source.url,
-            'augmented': element.augmented.source.url,
-            'augmented_size': element.augmented.source.size,
-            'title': element.title,
-            'description': element.description,
-        }
-    else:
-        data = {
-            'id' : element.id,
-            'type': element_type,
-            'author': element.author,
-            'owner': element.owner.user.username,
-            'artworks': element.artworks_count,
-            'exhibits': element.exhibits_count,
-            'source': element.source.url,
-            'size': element.source.size,
-            'uploaded_at': element.uploaded_at.strftime('%d %b, %Y'),
-        }
+    data=set_data(element,element_type) 
 
     serialized = json.dumps(data)
 
@@ -570,6 +587,40 @@ def delete(request):
        delete_content(Exhibit, request.user, request.GET.get('id', -1))
     return redirect('profile')
 
+def in_use_object(instance):
+        calc_object=calcObject(instance)
+        return calc_object.in_use()
+def in_use_marker(instance):    
+        calc_marker=calcMarker(instance)
+        return calc_marker.in_use()
+        calc_artwork=CalcArtwork(instance)
+        return calc_artwork.in_use() 
+     
+def  delete_content_moderator(instance,artworkIn):
+            artworkIn.delete()
+            instance.delete()
+def moderator_delete_object(instance,artworkIn):
+      if not in_use_Object(instance):
+          instance.delete()
+      elif in_use_object:
+          artworkIn = Artwork.objects.filter(augmented=instance)
+          delete_content_moderator(instance,artworkIn)
+          
+def moderator_delete_marker(instance,artworkIn):
+      if not in_use_marker(instance):
+          instance.delete()
+      elif in_use_marker:
+          artworkIn = Artwork.objects.filter(marker=instance)
+          delete_content_moderator(instance,artworkIn)                                     
+def  moderator_delete_manager(user,instance,artworkIn):
+      if(isinstance(instance,Object)):
+          moderator_delete_object(isnatnce,artworkIn)
+      elif(isinstance(instance,Marker)):
+           moderator_delete_marker(instance,artworkIn)
+      else:
+          instance.delete()                       
+                
+
 def delete_content(model, user, instance_id):
     qs = model.objects.filter(id=instance_id)
     if qs:
@@ -579,20 +630,10 @@ def delete_content(model, user, instance_id):
             instance.delete()
         elif isinstance(instance, model) and (instance.owner == user.profile or user.has_perm('users.moderator')):
             instance.delete()
-        else:
-            if user.has_perm('users.moderator') and not instance.in_use:
-                instance.delete()
-            elif user.has_perm('users.moderator') and instance.in_use:
-                if isinstance(instance, Object):
-                    artworkIn = Artwork.objects.filter(augmented=instance)
-                    artworkIn.delete()
-                    instance.delete()
-                elif isinstance(instance, Marker):
-                    artworkIn = Artwork.objects.filter(marker=instance)
-                    artworkIn.delete()
-                    instance.delete()
-                elif isinstance(instance, Artwork):
-                    instance.delete()
+        elif user.has_perm('users.moderator') :
+               moderator_delete_manager(user,instance)
+               
+           
 
 
 def related_content(request):
@@ -603,22 +644,22 @@ def related_content(request):
 
     if element_type == 'object':
         element = Object.objects.get(id=element_id)
-
-        artworks = element.artworks_list
-        exhibits = element.exhibits_list
+        calc_object=calcObject(element)      
+        artworks = calc_object.artworks_list
+        exhibits = calc_object.exhibits_list
 
         ctx = {'artworks': artworks, 'exhibits': exhibits, "seeall:":False}
     elif element_type == 'marker':
         element = Marker.objects.get(id=element_id)
-        
-        artworks = element.artworks_list
-        exhibits = element.exhibits_list
+        calc_marker=calcMarker(element)
+        artworks = calc_marker.artworks_list
+        exhibits = calc_marker.exhibits_list
 
         ctx = {'artworks': artworks, 'exhibits': exhibits, "seeall:":False}
     elif element_type == 'artwork':
         element = Artwork.objects.get(id=element_id)
-        
-        exhibits = element.exhibits_list
+        calc_artwork=CalcArtwork(element)
+        exhibits = calc_artwork.exhibits_list
        
         ctx = {'exhibits': exhibits, "seeall:":False} 
     
