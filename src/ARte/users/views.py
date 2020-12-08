@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 import hashlib
 import smtplib
+import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 log = logging.getLogger('ej')
@@ -17,6 +18,8 @@ from django.utils.translation import ugettext_lazy as _
 from django.http import Http404
 from django.http import HttpResponse
 from django.views.decorators.cache import cache_page
+from django.core.files.storage import FileSystemStorage
+from django.core.files import File
 
 
 from .forms import SignupForm, RecoverPasswordCodeForm, RecoverPasswordForm, UploadMarkerForm, UploadObjectForm, ArtworkForm, ExhibitForm, ProfileForm, PasswordChangeForm
@@ -371,9 +374,13 @@ def upload_view(request, form_class, form_type, route):
             return redirect('home')
     else:
         form = form_class()
-    return render(request,'users/upload.jinja2',
+
+    if form_type == 'marker':
+        return render(request,'users/upload-marker.jinja2',
         {'form_type': form_type, 'form': form, 'route': route, 'edit': False})
 
+    return render(request,'users/upload-object.jinja2',
+        {'form_type': form_type, 'form': form, 'route': route, 'edit': False})
 
 @login_required
 def edit_object(request):
