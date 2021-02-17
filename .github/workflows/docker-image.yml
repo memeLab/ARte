@@ -16,15 +16,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      id: extract_branch
+
     - uses: actions/checkout@v2
     - name: Build Jandig's Django image
-      run: docker build . -f docker/Dockerfile  -t jandigarte/django:${GITHUB_REF##*/}
+      run: docker build . -f docker/Dockerfile  -t jandigarte/django:${{ steps.extract_branch.outputs.branch }}
     
     - name: Push To Registry
       uses: redhat-actions/push-to-registry@v2
       with:
         image: jandigarte/django
-        tags: ${GITHUB_REF##*/}
+        tags: ${{ steps.extract_branch.outputs.branch }}
         registry: dockerhub
         username: ${{ secrets.DOCKERHUB_USER }}
         password: ${{ secrets.DOCKERHUB_PASS }}
