@@ -2,9 +2,12 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ develop ]
-  pull_request:
-    branches: [ develop ]
+    branches:
+      - 'master'
+      - 'develop'
+      - 'github-actions'
+    tags:
+      - '*'
 
 jobs:
 
@@ -14,6 +17,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Build the Docker image
-      run: docker build . -f docker/base.Dockerfile  -t jandigarte/requirements:latest
-
+    - name: Build Jandig's Django image
+      run: docker build . -f docker/Dockerfile  -t jandigarte/django:${GITHUB_REF##*/}
+    
+    - name: Push To Registry
+      uses: redhat-actions/push-to-registry@v2
+      with:
+        image: jandigarte/django
+        tags: ${GITHUB_REF##*/}
+        registry: dockerhub
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_PASS }}
