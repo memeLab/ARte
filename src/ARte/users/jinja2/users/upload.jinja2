@@ -4,7 +4,7 @@
 {% block content %}
     <section class="upload container">
         {# FIXME: maybe this can be improved #}
-        <link rel="stylesheet" href="/static/css/upload.css">
+        <link rel="stylesheet" href="/static/css/upload.css" type="text/css">
 
         {% if form_type == 'marker' and edit == False %}
             <h2>{{ _('Upload Marker') }}</h2>
@@ -42,10 +42,6 @@
                         {{ form.visible_fields()[0] }}
                         {{ form.visible_fields()[0].errors }}
                     </p>
-
-                    {# TO BE IMPLEMENTED - SLIDERS TO CHOOSE OBJECT SCALE AND POSITION #}
-                    {# <input ... type = 'range'... #}
-
                     {% if form_type == 'object' %}
                     <div id="edit_object_attributes">
 
@@ -59,10 +55,10 @@
                         <div id="tip2">
                             {{_("Position should be adjusted relative to the Marker's size on the screen. If horizontal position is 2, the center of the Object will be in a distance 2 times the size of its Marker's side to the right. If it's -1, it will be shown to the left.")}}
                         </div>
-                        <h3>Horizontal:</h3>
-                        <input id="X-position" class="trigger-change-value" value ="0">
-                        <h3>Vertical:</h3>
-                        <input id="Y-position" class="trigger-change-value" value ="0">
+
+                        {% with xposition=0, yposition=0 %}
+                            {% include "users/components/object-position.jinja2" %}
+                        {% endwith %}
 
                         {{ form.hidden_fields()[0] }}
                         {{ form.hidden_fields()[0].errors }}
