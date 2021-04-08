@@ -201,7 +201,7 @@ def create_artwork(request):
 
     return render(
         request,
-        'users/artwork-create.jinja2',
+        'users/artwork.jinja2',
         {
             'form': form,
             'marker_list': marker_list,
@@ -442,7 +442,7 @@ def edit_artwork(request):
 
     return render(
         request,
-        'users/artwork-edit.jinja2',
+        'users/artwork.jinja2',
         {
             'form': ArtworkForm(initial=model_data),
             'marker_list': Marker.objects.all(),
@@ -481,7 +481,7 @@ def edit_exhibit(request):
     model = model.first()
     model_artworks = ""
     for artwork in model.artworks.all():
-        model_artworks += str(artwork.id) + ","
+        model_artworks += str(artwork.id) + "," #
 
     model_artworks = model_artworks[:-1]
 
